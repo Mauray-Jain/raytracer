@@ -16,6 +16,7 @@ pub fn main() !void {
     , .{ image_width, image_height });
 
     for (0..image_height) |j| {
+        std.debug.print("\rScanlines remaining: {d} ", .{image_height - j});
         for (0..image_width) |i| {
             const r = @as(f64, @floatFromInt(i)) / (image_width - 1);
             const g = @as(f64, @floatFromInt(j)) / (image_height - 1);
@@ -29,5 +30,6 @@ pub fn main() !void {
         }
     }
 
+    std.debug.print("\rDone.                 \n", .{});
     try stdout.flush();
 }
