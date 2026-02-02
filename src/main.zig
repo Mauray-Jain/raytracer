@@ -1,4 +1,5 @@
 const std = @import("std");
+const vec = @import("vec.zig");
 
 pub fn main() !void {
     var stdout_buf: [1024]u8 = undefined;
@@ -8,25 +9,17 @@ pub fn main() !void {
     const image_width = 256;
     const image_height = 256;
 
-    try stdout.print(
-    \\P3
-    \\{d} {d}
-    \\255
-    \\
-    , .{ image_width, image_height });
+    try stdout.print("P3\n{d} {d}\n255\n", .{ image_width, image_height });
 
     for (0..image_height) |j| {
         std.debug.print("\rScanlines remaining: {d} ", .{image_height - j});
         for (0..image_width) |i| {
-            const r = @as(f64, @floatFromInt(i)) / (image_width - 1);
-            const g = @as(f64, @floatFromInt(j)) / (image_height - 1);
-            const b = 0.0;
-
-            const ir: i64 = @intFromFloat(255.99 * r);
-            const ig: i64 = @intFromFloat(255.99 * g);
-            const ib: i64 = @intFromFloat(255.99 * b);
-
-            try stdout.print("{d} {d} {d}\n", .{ ir, ig, ib });
+            const pixel_color = vec.Vec3{
+                @as(f64, @floatFromInt(i)) / (image_width - 1),
+                @as(f64, @floatFromInt(j)) / (image_height - 1),
+                0.0
+            };
+            try stdout.print("{f}", .{ vec.ColorFmt{ .data = pixel_color } });
         }
     }
 
