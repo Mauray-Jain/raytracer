@@ -16,6 +16,10 @@ pub fn z(v: Vec3) f64 {
     return v[2];
 }
 
+pub fn scale(v: Vec3, s: f64) Vec3 {
+    return v * @as(Vec3, @splat(s));
+}
+
 pub fn lengthSquared(v: Vec3) f64 {
     return @reduce(.Add, v * v);
 }
@@ -47,7 +51,8 @@ fn format(v: Vec3, writer: *std.Io.Writer) std.Io.Writer.Error!void {
     try writer.print("{d} {d} {d}", .{v[0], v[1], v[2]});
 }
 
-pub const ColorFmt = std.fmt.Alt(Vec3, colorFormat);
+pub const Color = Vec3;
+pub const ColorFmt = std.fmt.Alt(Color, colorFormat);
 fn colorFormat(v: Vec3, writer: *std.Io.Writer) std.Io.Writer.Error!void {
     const r: i64 = @intFromFloat(255.99 * v[0]);
     const g: i64 = @intFromFloat(255.99 * v[1]);
