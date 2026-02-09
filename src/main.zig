@@ -2,7 +2,17 @@ const std = @import("std");
 const vec = @import("vec.zig");
 const Ray = @import("Ray.zig");
 
+fn hit_sphere(ray: Ray, center: vec.Vec3, r: f64) bool {
+    const a = vec.dot(ray.dirn, ray.dirn);
+    const oc = center - ray.origin;
+    const c = vec.dot(oc, oc) - r * r;
+    const b = 2.0 * vec.dot(ray.dirn, oc);
+    return b * b >= 4.0 * a * c;
+}
+
 fn ray_color(r: Ray) vec.Color {
+    if (hit_sphere(r, .{0, 0, -1}, 0.5))
+        return .{1, 0, 0};
     const unit = vec.unit(r.dirn);
     const a = 0.5 * (unit[1] + 1.0);
     return vec.scale(vec.Vec3{0.5, 0.7, 1.0}, a)
