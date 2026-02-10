@@ -16,8 +16,16 @@ pub fn z(v: Vec3) f64 {
     return v[2];
 }
 
-pub fn scale(v: Vec3, s: f64) Vec3 {
-    return v * @as(Vec3, @splat(s));
+pub fn scale(v: Vec3, s: anytype) Vec3 {
+    return v * splat(s);
+}
+
+pub fn splat(n: anytype) Vec3 {
+    return switch (@TypeOf(n)) {
+        usize, comptime_int, i64, u64 => @as(Vec3, @splat(@floatFromInt(n))),
+        f64, comptime_float => @as(Vec3, @splat(n)),
+        else => unreachable,
+    };
 }
 
 pub fn lengthSquared(v: Vec3) f64 {
@@ -25,7 +33,7 @@ pub fn lengthSquared(v: Vec3) f64 {
 }
 
 pub fn length(v: Vec3) f64 {
-    return std.math.sqrt(lengthSquared(v));
+    return @sqrt(lengthSquared(v));
 }
 
 pub fn dot(u: Vec3, v: Vec3) f64 {
