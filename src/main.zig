@@ -1,25 +1,11 @@
 const std = @import("std");
 const vec = @import("vec.zig");
 const Ray = @import("Ray.zig");
+const obj = @import("objects.zig");
 
-fn hit_sphere(ray: Ray, center: vec.Vec3, r: f64) f64 {
-    const a = vec.lengthSquared(ray.dirn);
-    const oc = center - ray.origin;
-    const c = vec.lengthSquared(oc) - r * r;
-    // const b = -2.0 * vec.dot(ray.dirn, oc);
-    const h = vec.dot(ray.dirn, oc);
-    // const d = b * b - 4.0 * a * c;
-    const d = h * h - a * c;
-    if (d < 0.0) return -1.0;
-    // return (-b - std.math.sqrt(d)) / (2.0 * a);
-    return (h - std.math.sqrt(d)) / a;
-}
-
-fn ray_color(r: Ray) vec.Color {
-    const t = hit_sphere(r, .{0, 0, -1}, 0.5);
-    if (t > 0.0) {
-        const n = vec.unit(r.at(t) - vec.Vec3{0, 0, -1});
-        return vec.scale(.{n[0] + 1.0, n[1] + 1.0, n[2] + 1.0}, 0.5);
+fn ray_color(r: Ray, world: []const obj.Hittable) vec.Color {
+    if (obj.hitAll(world, r, 0.0, std.math.inf(f64))) |hit| {
+        return vec.splat(0.5) * (hit.normal + vec.Vec3{1, 1, 1});
     }
     const unit = vec.unit(r.dirn);
     const a = 0.5 * (unit[1] + 1.0);
@@ -58,6 +44,18 @@ pub fn main() !void {
                                - vec.scale(viewport_v, 0.5);
     const pixel00_loc = viewport_upper_left + vec.scale(pixel_delta_u + pixel_delta_v, 0.5);
 
+    // Objects
+    const world = [_]obj.Hittable{
+        obj.Hittable.init(&obj.Sphere{
+            .center = vec.Vec3{0, 0, -1},
+            .radius = 0.5,
+        }),
+        obj.Hittable.init(&obj.Sphere{
+            .center = vec.Vec3{0, -100.5, -1},
+            .radius = 100,
+        }),
+    };
+
     // Render
     try stdout.print("P3\n{d} {d}\n255\n", .{ image_width, image_height });
 
@@ -69,7 +67,7 @@ pub fn main() !void {
                                  + vec.scale(pixel_delta_v, j);
             const ray_dirn = pixel_center - camera_center;
             const r = Ray{ .origin = camera_center, .dirn = ray_dirn };
-            const pixel_color = ray_color(r);
+            const pixel_color = ray_color(r, &world);
             try stdout.print("{f}", .{ vec.ColorFmt{ .data = pixel_color } });
         }
     }
