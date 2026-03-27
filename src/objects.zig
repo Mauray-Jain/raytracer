@@ -1,6 +1,7 @@
 const std = @import("std");
 const Ray = @import("Ray.zig");
 const vec = @import("vec.zig");
+const Interval = @import("Interval.zig");
 const Vec3 = vec.Vec3;
 
 pub const Hit = struct {
@@ -17,16 +18,16 @@ pub const Hit = struct {
 
 pub const Hittable = struct {
     ptr: *const anyopaque,
-    hitfn: *const fn(ptr: *const anyopaque, r: Ray, ray_tmin: f64, ray_tmax: f64) ?Hit,
+    hitfn: *const fn(ptr: *const anyopaque, r: Ray, ray_t: Interval) ?Hit,
 
     pub fn init(ptr: anytype) Hittable {
         const T = @TypeOf(ptr);
         std.debug.assert(@typeInfo(T) == .pointer);
 
         const gen = struct {
-            pub fn hit(p: *const anyopaque, r: Ray, ray_tmin: f64, ray_tmax: f64) ?Hit {
+            pub fn hit(p: *const anyopaque, r: Ray, ray_t: Interval) ?Hit {
                 const self: T = @ptrCast(@alignCast(p));
-                return self.hit(r, ray_tmin, ray_tmax);
+                return self.hit(r, ray_t);
             }
         };
 
@@ -36,16 +37,16 @@ pub const Hittable = struct {
         };
     }
 
-    pub fn hit(self: Hittable, r: Ray, ray_tmin: f64, ray_tmax: f64) ?Hit {
-        return self.hitfn(self.ptr, r, ray_tmin, ray_tmax);
+    pub fn hit(self: Hittable, r: Ray, ray_t: Interval) ?Hit {
+        return self.hitfn(self.ptr, r, ray_t);
     }
 };
 
-pub fn hitAll(objs: []const Hittable, r: Ray, tmin: f64, tmax: f64) ?Hit {
+pub fn hitAll(objs: []const Hittable, r: Ray, t: Interval) ?Hit {
     var hit: ?Hit = null;
-    var closest: f64 = tmax;
+    var closest: f64 = t.max;
     for (objs) |obj| {
-        if (obj.hit(r, tmin, closest)) |rec| {
+        if (obj.hit(r, Interval{ .min = t.min, .max = closest })) |rec| {
             hit = rec;
             closest = rec.t;
         }
@@ -57,7 +58,7 @@ pub const Sphere = struct {
     center: Vec3,
     radius: f64,
 
-    pub fn hit(self: *const Sphere, r: Ray, ray_tmin: f64, ray_tmax: f64) ?Hit {
+    pub fn hit(self: *const Sphere, r: Ray, ray_t: Interval) ?Hit {
         const a = vec.lengthSquared(r.dirn);
         const oc = self.center - r.origin;
         const c = vec.lengthSquared(oc) - self.radius * self.radius;
@@ -70,9 +71,9 @@ pub const Sphere = struct {
         const sqrtd = @sqrt(d);
         // nearest root in acceptable range
         var root = (h - sqrtd) / a;
-        if (root <= ray_tmin or ray_tmax <= root) {
+        if (!ray_t.surrounds(root)) {
             root = (h + sqrtd) / a;
-            if (root <= ray_tmin or ray_tmax <= root) return null;
+            if (!ray_t.surrounds(root)) return null;
         }
 
         var rec: Hit = .{

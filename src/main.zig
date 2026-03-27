@@ -2,9 +2,10 @@ const std = @import("std");
 const vec = @import("vec.zig");
 const Ray = @import("Ray.zig");
 const obj = @import("objects.zig");
+const Interval = @import("Interval.zig");
 
 fn ray_color(r: Ray, world: []const obj.Hittable) vec.Color {
-    if (obj.hitAll(world, r, 0.0, std.math.inf(f64))) |hit| {
+    if (obj.hitAll(world, r, Interval{ .min = 0.0 })) |hit| {
         return vec.splat(0.5) * (hit.normal + vec.Vec3{1, 1, 1});
     }
     const unit = vec.unit(r.dirn);
