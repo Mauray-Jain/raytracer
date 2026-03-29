@@ -2,16 +2,19 @@ const std = @import("std");
 const vec = @import("vec.zig");
 const Ray = @import("Ray.zig");
 const obj = @import("objects.zig");
+const utils = @import("utils.zig");
 const Interval = @import("Interval.zig");
 
-aspect_ratio: f64   = 1.0,
-image_width:  usize = 100,
+aspect_ratio:      f64   = 1.0,
+image_width:       usize = 100,
+samples_per_pixel: usize = 10,
 
 const Self = @This();
 
 const ImgConstants = struct {
-    image_height:  usize,     // Rendered image height
+    image_height:     usize,  // Rendered image height
     camera_center: vec.Vec3,  // Camera center
+    pixel_sample_scale: f64,  // Color scale factor for a sum of pixel samples
     pixel00_loc:   vec.Vec3,  // Location of pixel 0, 0
     pixel_delta_u: vec.Vec3,  // Offset to pixel to the right
     pixel_delta_v: vec.Vec3,  // Offset to pixel below
@@ -29,13 +32,12 @@ pub fn render(self: Self, world: []const obj.Hittable) !void {
     for (0..img.image_height) |j| {
         std.debug.print("\rScanlines remaining: {d} ", .{ img.image_height - j });
         for (0..self.image_width) |i| {
-            const pixel_center = img.pixel00_loc
-                                 + vec.scale(img.pixel_delta_u, i)
-                                 + vec.scale(img.pixel_delta_v, j);
-            const ray_dirn = pixel_center - img.camera_center;
-            const r = Ray{ .origin = img.camera_center, .dirn = ray_dirn };
-            const pixel_color = ray_colour(r, world);
-            try stdout.print("{f}", .{ vec.ColorFmt{ .data = pixel_color } });
+            var pixel_color = vec.zero;
+            for (0..self.samples_per_pixel) |_| {
+                const r = getRay(img, i, j);
+                pixel_color += ray_colour(r, world);
+            }
+            try stdout.print("{f}", .{ vec.ColorFmt{ .data = vec.scale(pixel_color, img.pixel_sample_scale) } });
         }
     }
 
@@ -66,12 +68,31 @@ fn initialise(self: Self) ImgConstants {
     const pixel00_loc = viewport_upper_left + vec.scale(pixel_delta_u + pixel_delta_v, 0.5);
 
     return .{
-        .image_height  = image_height,
-        .camera_center = camera_center,
-        .pixel00_loc   = pixel00_loc,
-        .pixel_delta_u = pixel_delta_u,
-        .pixel_delta_v = pixel_delta_v,
+        .image_height       = image_height,
+        .camera_center      = camera_center,
+        .pixel_sample_scale = 1.0 / @as(f64, @floatFromInt(self.samples_per_pixel)),
+        .pixel00_loc        = pixel00_loc,
+        .pixel_delta_u      = pixel_delta_u,
+        .pixel_delta_v      = pixel_delta_v,
     };
+}
+
+fn getRay(img: ImgConstants, i: usize, j: usize) Ray {
+    // Construct a camera ray originating from the origin and directed at randomly sampled point around the pixel location i, j.
+    const ifloat = @as(f64, @floatFromInt(i));
+    const jfloat = @as(f64, @floatFromInt(j));
+    const offset = sampleSquare();
+    const pixel_sample = img.pixel00_loc
+                         + vec.scale(img.pixel_delta_u, ifloat + offset[0])
+                         + vec.scale(img.pixel_delta_v, jfloat + offset[1]);
+    return .{
+        .origin = img.camera_center,
+        .dirn   = pixel_sample - img.camera_center,
+    };
+}
+
+fn sampleSquare() vec.Vec3 {
+    return .{ utils.randomf64() - 0.5, utils.randomf64() - 0.5, 0 };
 }
 
 fn ray_colour(r: Ray, world: []const obj.Hittable) vec.Vec3 {

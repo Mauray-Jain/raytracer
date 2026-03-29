@@ -16,6 +16,7 @@ pub const Hit = struct {
     }
 };
 
+// interface
 pub const Hittable = struct {
     ptr: *const anyopaque,
     hitfn: *const fn(ptr: *const anyopaque, r: Ray, ray_t: Interval) ?Hit,
