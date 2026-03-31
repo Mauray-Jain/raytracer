@@ -8,6 +8,7 @@ const Interval = @import("Interval.zig");
 aspect_ratio:      f64   = 1.0,
 image_width:       usize = 100,
 samples_per_pixel: usize = 10,
+max_depth:         i32   = 10,
 
 const Self = @This();
 
@@ -33,9 +34,10 @@ pub fn render(self: Self, world: []const obj.Hittable) !void {
         std.debug.print("\rScanlines remaining: {d} ", .{ img.image_height - j });
         for (0..self.image_width) |i| {
             var pixel_color = vec.zero;
+            // antialiasing
             for (0..self.samples_per_pixel) |_| {
                 const r = getRay(img, i, j);
-                pixel_color += ray_colour(r, world);
+                pixel_color += ray_colour(r, self.max_depth, world);
             }
             try stdout.print("{f}", .{ vec.ColorFmt{ .data = vec.scale(pixel_color, img.pixel_sample_scale) } });
         }
@@ -95,9 +97,18 @@ fn sampleSquare() vec.Vec3 {
     return .{ utils.randomf64() - 0.5, utils.randomf64() - 0.5, 0 };
 }
 
-fn ray_colour(r: Ray, world: []const obj.Hittable) vec.Vec3 {
+fn ray_colour(r: Ray, depth: i32, world: []const obj.Hittable) vec.Vec3 {
+    if (depth <= 0) {
+        return vec.zero;
+    }
+
     if (obj.hitAll(world, r, .{ .min = 0.0 })) |hit| {
-        return vec.splat(0.5) * (hit.normal + vec.Vec3{1, 1, 1});
+        // recursive call for reflection
+        const dirn = vec.randomOnHemisphere(hit.normal);
+        return vec.splat(0.5) * ray_colour(.{
+            .origin = hit.p,
+            .dirn = dirn
+        }, depth - 1, world);
     }
     const unit = vec.unit(r.dirn);
     const a = 0.5 * (unit[1] + 1.0);

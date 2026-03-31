@@ -1,4 +1,5 @@
 const std = @import("std");
+const utils = @import("utils.zig");
 const Interval = @import("Interval.zig");
 
 pub const Vec3 = @Vector(3, f64);
@@ -53,6 +54,40 @@ pub fn unit(v: Vec3) Vec3 {
     const len = length(v);
     if (len == 0) return zero;
     return v / @as(Vec3, @splat(len));
+}
+
+pub fn random() Vec3 {
+    return .{
+        utils.randomf64(),
+        utils.randomf64(),
+        utils.randomf64(),
+    };
+}
+
+pub fn randomRange(min: f64, max: f64) Vec3 {
+    return .{
+        utils.randomRangef64(min, max),
+        utils.randomRangef64(min, max),
+        utils.randomRangef64(min, max),
+    };
+}
+
+pub fn randomUnitVector() Vec3 {
+    while (true) {
+        const p = randomRange(-1, 1);
+        const len = lengthSquared(p);
+        if (1e-160 < len and len <= 1) {
+            return scale(p, @sqrt(len));
+        }
+    }
+}
+
+pub fn randomOnHemisphere(normal: Vec3) Vec3 {
+    const rand_unit = randomUnitVector();
+    if (dot(rand_unit, normal) > 0.0) {
+        return rand_unit;
+    }
+    return -rand_unit;
 }
 
 pub const Fmt = std.fmt.Alt(Vec3, format);
