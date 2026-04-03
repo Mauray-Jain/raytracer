@@ -104,12 +104,13 @@ fn ray_colour(r: Ray, depth: i32, world: []const obj.Hittable) vec.Vec3 {
 
     if (obj.hitAll(world, r, .{ .min = 0.001 })) |hit| {
         // recursive call for reflection
-        const dirn = vec.randomOnHemisphere(hit.normal);
+        const dirn = vec.randomUnitVector() + hit.normal;
         return vec.splat(0.5) * ray_colour(.{
             .origin = hit.p,
             .dirn = dirn
         }, depth - 1, world);
     }
+
     const unit = vec.unit(r.dirn);
     const a = 0.5 * (unit[1] + 1.0);
     return vec.scale(vec.Vec3{0.5, 0.7, 1.0}, a)
